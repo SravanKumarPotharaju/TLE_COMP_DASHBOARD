@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Search, Satellite, Globe, Clock, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Search, Satellite, Globe, Clock, TrendingUp, Activity, Orbit } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter } from 'recharts';
 import { TLEData } from './Dashboard';
+import { useSatelliteContext } from '@/contexts/SatelliteContext';
 
 const SatelliteDetail = () => {
   const { noradId } = useParams<{ noradId: string }>();
   const navigate = useNavigate();
+  const { tleData } = useSatelliteContext();
   const [satellite, setSatellite] = useState<TLEData | null>(null);
   const [searchNoradId, setSearchNoradId] = useState('');
 
@@ -25,20 +27,26 @@ const SatelliteDetail = () => {
   ];
 
   useEffect(() => {
-    // Mock API call to get satellite details
-    const mockSatellite: TLEData = {
-      noradId: noradId || "25544",
-      name: "ISS (ZARYA)",
-      type: "Space Station",
-      rateOfChange: 0.002,
-      isNew: false,
-      epoch: "2024-01-15",
-      inclination: 51.6,
-      eccentricity: 0.0001,
-      meanMotion: 15.5
-    };
-    setSatellite(mockSatellite);
-  }, [noradId]);
+    // Find satellite in the loaded data or use mock data
+    const foundSatellite = tleData.find(sat => sat.noradId === noradId);
+    if (foundSatellite) {
+      setSatellite(foundSatellite);
+    } else {
+      // Fallback to mock data if satellite not found in loaded data
+      const mockSatellite: TLEData = {
+        noradId: noradId || "25544",
+        name: "ISS (ZARYA)",
+        type: "Space Station",
+        rateOfChange: 0.002,
+        isNew: false,
+        epoch: "2024-01-15",
+        inclination: 51.6,
+        eccentricity: 0.0001,
+        meanMotion: 15.5
+      };
+      setSatellite(mockSatellite);
+    }
+  }, [noradId, tleData]);
 
   const handleSearch = () => {
     if (searchNoradId) {
@@ -47,11 +55,18 @@ const SatelliteDetail = () => {
   };
 
   if (!satellite) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin w-12 h-12 border-4 border-chart-1 border-t-transparent rounded-full mx-auto"></div>
+          <p className="text-muted-foreground">Loading satellite data...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -65,7 +80,7 @@ const SatelliteDetail = () => {
               <p className="text-muted-foreground">NORAD ID: {satellite.noradId}</p>
             </div>
           </div>
-          <Badge variant={satellite.isNew ? "default" : "secondary"}>
+          <Badge className={satellite.isNew ? "bg-satellite-new text-white border-0" : "bg-satellite-existing text-white border-0"}>
             {satellite.isNew ? "New Object" : "Existing Object"}
           </Badge>
         </div>
@@ -96,43 +111,46 @@ const SatelliteDetail = () => {
 
         {/* Satellite Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
+          <Card className="border-l-4 border-l-chart-1 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Satellite Type</CardTitle>
-              <Satellite className="h-4 w-4 text-muted-foreground" />
+              <Satellite className="h-4 w-4 text-chart-1" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{satellite.type}</div>
+              <div className="text-2xl font-bold text-chart-1">{satellite.type}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-chart-2 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Rate of Change</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <TrendingUp className="h-4 w-4 text-chart-2" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{satellite.rateOfChange.toFixed(4)}</div>
+              <div className="text-2xl font-bold text-chart-2">{satellite.rateOfChange.toFixed(4)}</div>
+              <p className="text-xs text-muted-foreground mt-1">per time unit</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-chart-3 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Inclination</CardTitle>
-              <Globe className="h-4 w-4 text-muted-foreground" />
+              <Orbit className="h-4 w-4 text-chart-3" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{satellite.inclination}°</div>
+              <div className="text-2xl font-bold text-chart-3">{satellite.inclination}°</div>
+              <p className="text-xs text-muted-foreground mt-1">orbital angle</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-4 border-l-chart-4 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Epoch</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="h-4 w-4 text-chart-4" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{satellite.epoch}</div>
+              <div className="text-2xl font-bold text-chart-4">{satellite.epoch}</div>
+              <p className="text-xs text-muted-foreground mt-1">last updated</p>
             </CardContent>
           </Card>
         </div>
@@ -159,8 +177,9 @@ const SatelliteDetail = () => {
                   <Line 
                     type="monotone" 
                     dataKey="rateOfChange" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={2}
+                    stroke="hsl(var(--chart-1))" 
+                    strokeWidth={3}
+                    dot={{ fill: 'hsl(var(--chart-2))', strokeWidth: 2, r: 4 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -196,7 +215,7 @@ const SatelliteDetail = () => {
                   <Scatter 
                     name="Orbital Parameters" 
                     dataKey="eccentricity" 
-                    fill="hsl(var(--primary))"
+                    fill="hsl(var(--chart-3))"
                   />
                 </ScatterChart>
               </ResponsiveContainer>

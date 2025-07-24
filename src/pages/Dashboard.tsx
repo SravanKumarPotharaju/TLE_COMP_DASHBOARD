@@ -5,11 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Upload, BarChart3, PieChart } from 'lucide-react';
+import { Upload, BarChart3, PieChart, Satellite, Zap } from 'lucide-react';
 import { FileUploadSection } from '@/components/dashboard/FileUploadSection';
 import { SatelliteBarChart } from '@/components/dashboard/SatelliteBarChart';
 import { SatelliteTypeChart } from '@/components/dashboard/SatelliteTypeChart';
 import { ComparisonStats } from '@/components/dashboard/ComparisonStats';
+import { useSatelliteContext } from '@/contexts/SatelliteContext';
 import { useToast } from '@/hooks/use-toast';
 
 export interface TLEData {
@@ -25,9 +26,14 @@ export interface TLEData {
 }
 
 const Dashboard = () => {
-  const [currentFile, setCurrentFile] = useState<File | null>(null);
-  const [referenceFile, setReferenceFile] = useState<File | null>(null);
-  const [tleData, setTleData] = useState<TLEData[]>([]);
+  const { 
+    tleData, 
+    setTleData, 
+    currentFile, 
+    setCurrentFile, 
+    referenceFile, 
+    setReferenceFile 
+  } = useSatelliteContext();
   const [selectedType, setSelectedType] = useState<string>('all');
   const [maxSatellites, setMaxSatellites] = useState<number>(20);
   const [loading, setLoading] = useState(false);
@@ -45,7 +51,7 @@ const Dashboard = () => {
 
     setLoading(true);
     try {
-      // Simulate API call to Django backend
+      // Simulate API call to Django backend with more realistic data
       const mockData: TLEData[] = [
         {
           noradId: "25544",
@@ -79,6 +85,39 @@ const Dashboard = () => {
           inclination: 82.5,
           eccentricity: 0.0003,
           meanMotion: 14.8
+        },
+        {
+          noradId: "52132",
+          name: "GEOSAT-2A",
+          type: "Earth Observation",
+          rateOfChange: 0.003,
+          isNew: true,
+          epoch: "2024-01-17",
+          inclination: 98.2,
+          eccentricity: 0.0001,
+          meanMotion: 14.2
+        },
+        {
+          noradId: "39084",
+          name: "GPS IIF-12",
+          type: "Navigation",
+          rateOfChange: 0.001,
+          isNew: false,
+          epoch: "2024-01-13",
+          inclination: 55.0,
+          eccentricity: 0.0004,
+          meanMotion: 2.0
+        },
+        {
+          noradId: "44506",
+          name: "SENTINEL-6A",
+          type: "Scientific",
+          rateOfChange: 0.006,
+          isNew: true,
+          epoch: "2024-01-18",
+          inclination: 66.0,
+          eccentricity: 0.0002,
+          meanMotion: 12.8
         }
       ];
       
@@ -105,12 +144,22 @@ const Dashboard = () => {
   const satelliteTypes = [...new Set(tleData.map(s => s.type))];
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-foreground">Satellite TLE Comparison Dashboard</h1>
-          <p className="text-muted-foreground">Professional analysis of Two-Line Element data</p>
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-3">
+            <div className="p-3 rounded-full bg-gradient-to-r from-chart-1 to-chart-2">
+              <Satellite className="h-8 w-8 text-white" />
+            </div>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-chart-1 via-chart-2 to-chart-3 bg-clip-text text-transparent">
+              Satellite TLE Comparison Dashboard
+            </h1>
+            <div className="p-3 rounded-full bg-gradient-to-r from-chart-2 to-chart-3">
+              <Zap className="h-8 w-8 text-white" />
+            </div>
+          </div>
+          <p className="text-muted-foreground text-lg">Professional analysis of Two-Line Element data with real-time visualization</p>
         </div>
 
         {/* File Upload Section */}
@@ -162,8 +211,8 @@ const Dashboard = () => {
                 <div className="space-y-2">
                   <Label>Legend</Label>
                   <div className="flex gap-2">
-                    <Badge variant="default">New Objects</Badge>
-                    <Badge variant="secondary">Existing Objects</Badge>
+                    <Badge className="bg-satellite-new text-white border-0">New Objects</Badge>
+                    <Badge className="bg-satellite-existing text-white border-0">Existing Objects</Badge>
                   </div>
                 </div>
               </CardContent>

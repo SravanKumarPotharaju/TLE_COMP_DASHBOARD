@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import { TLEData } from '@/pages/Dashboard';
 import { useNavigate } from 'react-router-dom';
@@ -60,11 +60,14 @@ export const SatelliteBarChart: React.FC<SatelliteBarChartProps> = ({ data }) =>
             />
             <Tooltip content={<CustomTooltip />} />
             <Bar 
-              dataKey="rateOfChange" 
-              fill="hsl(var(--primary))"
+              dataKey="rateOfChange"
               onClick={handleBarClick}
               className="cursor-pointer"
-            />
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.isNew ? 'hsl(var(--satellite-new))' : 'hsl(var(--satellite-existing))'} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
         <div className="mt-4 text-sm text-muted-foreground">
