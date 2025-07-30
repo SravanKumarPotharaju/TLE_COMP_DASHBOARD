@@ -4,10 +4,10 @@ import { TLEData } from '@/pages/Dashboard';
 interface SatelliteContextType {
   tleData: TLEData[];
   setTleData: (data: TLEData[]) => void;
-  currentFile: File | null;
-  setCurrentFile: (file: File | null) => void;
-  referenceFile: File | null;
-  setReferenceFile: (file: File | null) => void;
+  fromDate: string;
+  setFromDate: (date: string) => void;
+  toDate: string;
+  setToDate: (date: string) => void;
 }
 
 const SatelliteContext = createContext<SatelliteContextType | undefined>(undefined);
@@ -26,17 +26,17 @@ interface SatelliteProviderProps {
 
 export const SatelliteProvider: React.FC<SatelliteProviderProps> = ({ children }) => {
   const [tleData, setTleData] = useState<TLEData[]>([]);
-  const [currentFile, setCurrentFile] = useState<File | null>(null);
-  const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
 
   return (
     <SatelliteContext.Provider value={{
       tleData,
       setTleData,
-      currentFile,
-      setCurrentFile,
-      referenceFile,
-      setReferenceFile
+      fromDate,
+      setFromDate,
+      toDate,
+      setToDate
     }}>
       {children}
     </SatelliteContext.Provider>

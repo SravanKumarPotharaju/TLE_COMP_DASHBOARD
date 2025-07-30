@@ -37,12 +37,16 @@ const SatelliteDetail = () => {
         noradId: noradId || "25544",
         name: "ISS (ZARYA)",
         type: "Space Station",
-        rateOfChange: 0.002,
-        isNew: false,
+        updateCount: 12,
+        lastUpdated: "2024-01-15T14:30:00Z",
         epoch: "2024-01-15",
         inclination: 51.6,
         eccentricity: 0.0001,
-        meanMotion: 15.5
+        meanMotion: 15.5,
+        updates: [
+          { date: "2024-01-15", time: "09:00", hour: 9 },
+          { date: "2024-01-15", time: "14:30", hour: 14 }
+        ]
       };
       setSatellite(mockSatellite);
     }
@@ -80,8 +84,8 @@ const SatelliteDetail = () => {
               <p className="text-muted-foreground">NORAD ID: {satellite.noradId}</p>
             </div>
           </div>
-          <Badge className={satellite.isNew ? "bg-satellite-new text-white border-0" : "bg-satellite-existing text-white border-0"}>
-            {satellite.isNew ? "New Object" : "Existing Object"}
+          <Badge className="bg-chart-1 text-white border-0">
+            {satellite.type}
           </Badge>
         </div>
 
@@ -123,12 +127,12 @@ const SatelliteDetail = () => {
 
           <Card className="border-l-4 border-l-chart-2 hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rate of Change</CardTitle>
+              <CardTitle className="text-sm font-medium">Update Count</CardTitle>
               <TrendingUp className="h-4 w-4 text-chart-2" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-chart-2">{satellite.rateOfChange.toFixed(4)}</div>
-              <p className="text-xs text-muted-foreground mt-1">per time unit</p>
+              <div className="text-2xl font-bold text-chart-2">{satellite.updateCount}</div>
+              <p className="text-xs text-muted-foreground mt-1">total updates</p>
             </CardContent>
           </Card>
 
@@ -159,7 +163,7 @@ const SatelliteDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Rate of Change Over Time</CardTitle>
+              <CardTitle>Update Activity Over Time</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -241,16 +245,16 @@ const SatelliteDetail = () => {
               <div className="space-y-2">
                 <h3 className="font-semibold">Change Analysis</h3>
                 <div className="space-y-1 text-sm">
-                  <p>Current Rate: {satellite.rateOfChange.toFixed(4)}</p>
-                  <p>Trend: Stable</p>
+                  <p>Update Count: {satellite.updateCount}</p>
+                  <p>Last Updated: {satellite.lastUpdated}</p>
                   <p>Classification: {satellite.type}</p>
                 </div>
               </div>
               <div className="space-y-2">
                 <h3 className="font-semibold">Status</h3>
                 <div className="space-y-1 text-sm">
-                  <p>Object Status: {satellite.isNew ? "New" : "Existing"}</p>
-                  <p>Last Update: {satellite.epoch}</p>
+                  <p>Total Updates: {satellite.updateCount}</p>
+                  <p>Epoch: {satellite.epoch}</p>
                   <p>Data Quality: Good</p>
                 </div>
               </div>

@@ -20,9 +20,9 @@ export const SatelliteBarChart: React.FC<SatelliteBarChartProps> = ({ data }) =>
           <p className="font-semibold text-card-foreground">{data.name}</p>
           <p className="text-sm text-muted-foreground">NORAD ID: {data.noradId}</p>
           <p className="text-sm">Type: {data.type}</p>
-          <p className="text-sm">Rate of Change: {data.rateOfChange.toFixed(4)}</p>
+          <p className="text-sm">Update Count: {data.updateCount}</p>
           <p className="text-sm">Epoch: {data.epoch}</p>
-          <p className="text-sm">Status: {data.isNew ? 'New Object' : 'Existing Object'}</p>
+          <p className="text-sm">Last Updated: {data.lastUpdated}</p>
           <p className="text-xs text-muted-foreground mt-1">Click for detailed statistics</p>
         </div>
       );
@@ -39,7 +39,7 @@ export const SatelliteBarChart: React.FC<SatelliteBarChartProps> = ({ data }) =>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5" />
-          Rate of Change Analysis
+          Satellite Update Frequency Analysis
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -60,13 +60,23 @@ export const SatelliteBarChart: React.FC<SatelliteBarChartProps> = ({ data }) =>
             />
             <Tooltip content={<CustomTooltip />} />
             <Bar 
-              dataKey="rateOfChange"
+              dataKey="updateCount"
               onClick={handleBarClick}
               className="cursor-pointer"
             >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.isNew ? 'hsl(var(--satellite-new))' : 'hsl(var(--satellite-existing))'} />
-              ))}
+              {data.map((entry, index) => {
+                const typeColors: Record<string, string> = {
+                  'Communication': 'hsl(var(--chart-1))',
+                  'Space Station': 'hsl(var(--chart-2))',
+                  'Military': 'hsl(var(--chart-3))',
+                  'Scientific': 'hsl(var(--chart-4))',
+                  'Earth Observation': 'hsl(var(--chart-5))',
+                  'Navigation': 'hsl(var(--satellite-existing))'
+                };
+                return (
+                  <Cell key={`cell-${index}`} fill={typeColors[entry.type] || 'hsl(var(--chart-1))'} />
+                );
+              })}
             </Bar>
           </BarChart>
         </ResponsiveContainer>

@@ -13,24 +13,24 @@ export const SatelliteTypeChart: React.FC<SatelliteTypeChartProps> = ({ data }) 
     const existing = acc.find(item => item.type === satellite.type);
     if (existing) {
       existing.count++;
-      if (satellite.isNew) existing.newCount++;
+      existing.totalUpdates += satellite.updateCount;
     } else {
       acc.push({
         type: satellite.type,
         count: 1,
-        newCount: satellite.isNew ? 1 : 0
+        totalUpdates: satellite.updateCount
       });
     }
     return acc;
-  }, [] as Array<{ type: string; count: number; newCount: number }>);
+  }, [] as Array<{ type: string; count: number; totalUpdates: number }>);
 
   const COLORS = [
-    'hsl(var(--primary))',
-    'hsl(var(--secondary))',
-    'hsl(var(--accent))',
-    'hsl(var(--muted))',
-    'hsl(210, 40%, 60%)',
-    'hsl(330, 40%, 60%)'
+    'hsl(var(--chart-1))',
+    'hsl(var(--chart-2))',
+    'hsl(var(--chart-3))',
+    'hsl(var(--chart-4))',
+    'hsl(var(--chart-5))',
+    'hsl(var(--satellite-existing))'
   ];
 
   const CustomTooltip = ({ active, payload }: any) => {
@@ -39,9 +39,9 @@ export const SatelliteTypeChart: React.FC<SatelliteTypeChartProps> = ({ data }) 
       return (
         <div className="bg-card border border-border rounded-lg p-3 shadow-lg">
           <p className="font-semibold text-card-foreground">{data.type}</p>
-          <p className="text-sm">Total: {data.count}</p>
-          <p className="text-sm">New Objects: {data.newCount}</p>
-          <p className="text-sm">Existing: {data.count - data.newCount}</p>
+          <p className="text-sm">Satellites: {data.count}</p>
+          <p className="text-sm">Total Updates: {data.totalUpdates}</p>
+          <p className="text-sm">Avg Updates: {(data.totalUpdates / data.count).toFixed(1)}</p>
         </div>
       );
     }
