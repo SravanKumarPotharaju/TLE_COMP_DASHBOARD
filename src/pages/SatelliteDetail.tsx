@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Search, Satellite, Globe, Clock, TrendingUp, Activity, Orbit } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Search, Satellite, Globe, Clock, TrendingUp, Activity, Orbit, Settings } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter } from 'recharts';
 import { TLEData } from './Dashboard';
 import { useSatelliteContext } from '@/contexts/SatelliteContext';
+import { ContributionGrid } from '@/components/dashboard/ContributionGrid';
 
 const SatelliteDetail = () => {
   const { noradId } = useParams<{ noradId: string }>();
@@ -16,15 +18,32 @@ const SatelliteDetail = () => {
   const { tleData } = useSatelliteContext();
   const [satellite, setSatellite] = useState<TLEData | null>(null);
   const [searchNoradId, setSearchNoradId] = useState('');
+  const [selectedOrbitalParam, setSelectedOrbitalParam] = useState('inclination');
+  const [timePeriod, setTimePeriod] = useState('day');
 
   // Mock historical data for the satellite
   const historicalData = [
-    { date: '2024-01-10', rateOfChange: 0.001, inclination: 51.6, eccentricity: 0.0001 },
-    { date: '2024-01-11', rateOfChange: 0.0015, inclination: 51.61, eccentricity: 0.00012 },
-    { date: '2024-01-12', rateOfChange: 0.002, inclination: 51.62, eccentricity: 0.00011 },
-    { date: '2024-01-13', rateOfChange: 0.0018, inclination: 51.61, eccentricity: 0.00013 },
-    { date: '2024-01-14', rateOfChange: 0.002, inclination: 51.6, eccentricity: 0.0001 },
+    { date: '2024-01-10', time: '10:00', hour: 10, rateOfChange: 0.001, inclination: 51.6, eccentricity: 0.0001, meanMotion: 15.49, altitude: 408.2 },
+    { date: '2024-01-11', time: '14:30', hour: 14, rateOfChange: 0.0015, inclination: 51.61, eccentricity: 0.00012, meanMotion: 15.51, altitude: 408.8 },
+    { date: '2024-01-12', time: '09:15', hour: 9, rateOfChange: 0.002, inclination: 51.62, eccentricity: 0.00011, meanMotion: 15.50, altitude: 409.1 },
+    { date: '2024-01-13', time: '16:45', hour: 16, rateOfChange: 0.0018, inclination: 51.61, eccentricity: 0.00013, meanMotion: 15.48, altitude: 407.9 },
+    { date: '2024-01-14', time: '12:20', hour: 12, rateOfChange: 0.002, inclination: 51.6, eccentricity: 0.0001, meanMotion: 15.52, altitude: 408.5 },
   ];
+
+  const orbitalParams = [
+    { label: 'Inclination', value: 'inclination', unit: '°' },
+    { label: 'Eccentricity', value: 'eccentricity', unit: '' },
+    { label: 'Mean Motion', value: 'meanMotion', unit: 'rev/day' },
+    { label: 'Altitude', value: 'altitude', unit: 'km' }
+  ];
+
+  const getScatterData = () => {
+    return historicalData.map(item => ({
+      time: item.time,
+      value: item[selectedOrbitalParam as keyof typeof item],
+      date: item.date
+    }));
+  };
 
   useEffect(() => {
     // Find satellite in the loaded data or use mock data
@@ -159,18 +178,66 @@ const SatelliteDetail = () => {
           </Card>
         </div>
 
+        {/* Satellite Update Activity Grid */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Satellite Update Activity Grid
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  <Select value={timePeriod} onValueChange={setTimePeriod}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="day">Day</SelectItem>
+                      <SelectItem value="week">Week</SelectItem>
+                      <SelectItem value="month">Month</SelectItem>
+                      <SelectItem value="year">Year</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ContributionGrid data={[satellite]} timePeriod={timePeriod} />
+          </CardContent>
+        </Card>
+
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Update Activity Over Time</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Update Activity Over Time</span>
+                <Select value={timePeriod} onValueChange={setTimePeriod}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">Day</SelectItem>
+                    <SelectItem value="week">Week</SelectItem>
+                    <SelectItem value="month">Month</SelectItem>
+                    <SelectItem value="year">Year</SelectItem>
+                  </SelectContent>
+                </Select>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={historicalData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <XAxis 
+                    dataKey="time" 
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                  />
+                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <Tooltip 
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
@@ -192,21 +259,37 @@ const SatelliteDetail = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Orbital Parameters Scatter Plot</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Orbital Parameters vs Time</span>
+                <Select value={selectedOrbitalParam} onValueChange={setSelectedOrbitalParam}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orbitalParams.map(param => (
+                      <SelectItem key={param.value} value={param.value}>
+                        {param.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <ScatterChart data={historicalData}>
+                <ScatterChart data={getScatterData()}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
-                    dataKey="inclination" 
-                    name="Inclination" 
+                    dataKey="time" 
+                    name="Time" 
                     stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
                   />
                   <YAxis 
-                    dataKey="eccentricity" 
-                    name="Eccentricity" 
+                    dataKey="value" 
+                    name={orbitalParams.find(p => p.value === selectedOrbitalParam)?.label}
                     stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
                   />
                   <Tooltip 
                     cursor={{ strokeDasharray: '3 3' }}
@@ -215,10 +298,14 @@ const SatelliteDetail = () => {
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '6px'
                     }}
+                    formatter={(value, name) => [
+                      `${value}${orbitalParams.find(p => p.value === selectedOrbitalParam)?.unit || ''}`,
+                      orbitalParams.find(p => p.value === selectedOrbitalParam)?.label
+                    ]}
                   />
                   <Scatter 
-                    name="Orbital Parameters" 
-                    dataKey="eccentricity" 
+                    name={orbitalParams.find(p => p.value === selectedOrbitalParam)?.label}
+                    dataKey="value" 
                     fill="hsl(var(--chart-3))"
                   />
                 </ScatterChart>

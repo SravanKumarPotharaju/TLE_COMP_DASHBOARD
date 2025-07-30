@@ -6,13 +6,15 @@ import { TLEData } from '@/pages/Dashboard';
 
 interface ContributionGridProps {
   data: TLEData[];
+  timePeriod?: string;
 }
 
-export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
+export const ContributionGrid: React.FC<ContributionGridProps> = ({ data, timePeriod = 'day' }) => {
   const [hoveredCell, setHoveredCell] = useState<{
     satellite: string;
     hour: number;
     updates: number;
+    updateTimes: string[];
   } | null>(null);
 
   // Generate hours (0-23)
@@ -40,9 +42,13 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
     return typeColors[type] || 'bg-chart-1';
   };
 
-  // Calculate updates per satellite per hour
+  // Calculate updates per satellite per hour with update times
   const getUpdatesForHour = (satellite: TLEData, hour: number) => {
-    return satellite.updates.filter(update => update.hour === hour).length;
+    const hourUpdates = satellite.updates.filter(update => update.hour === hour);
+    return {
+      count: hourUpdates.length,
+      times: hourUpdates.map(update => update.time)
+    };
   };
 
   return (
@@ -91,15 +97,16 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
                   </Badge>
                 </div>
                 {hours.map(hour => {
-                  const updateCount = getUpdatesForHour(satellite, hour);
+                  const updateData = getUpdatesForHour(satellite, hour);
                   return (
                     <div
                       key={hour}
-                      className={`w-4 h-4 rounded-sm ${getIntensityColor(updateCount)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
+                      className={`w-4 h-4 rounded-sm ${getIntensityColor(updateData.count)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
                       onMouseEnter={() => setHoveredCell({
                         satellite: satellite.name,
                         hour,
-                        updates: updateCount
+                        updates: updateData.count,
+                        updateTimes: updateData.times
                       })}
                       onMouseLeave={() => setHoveredCell(null)}
                     />
@@ -112,14 +119,26 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
 
         {/* Tooltip */}
         {hoveredCell && (
-          <div className="absolute z-10 bg-card border border-border rounded-lg p-3 shadow-lg pointer-events-none">
+          <div className="absolute z-10 bg-card border border-border rounded-lg p-3 shadow-lg pointer-events-none max-w-xs">
             <p className="font-semibold text-card-foreground">{hoveredCell.satellite}</p>
-            <p className="text-sm text-muted-foreground">Hour: {hoveredCell.hour}:00</p>
+            <p className="text-sm text-muted-foreground">Hour: {hoveredCell.hour}:00 - {(hoveredCell.hour + 1) % 24}:00</p>
             <p className="text-sm">Updates: {hoveredCell.updates}</p>
-            <div className="flex items-center gap-1 mt-1">
+            {hoveredCell.updateTimes.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs text-muted-foreground mb-1">Update Times:</p>
+                <div className="flex flex-wrap gap-1">
+                  {hoveredCell.updateTimes.map((time, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs px-1 py-0">
+                      {time}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-1 mt-2">
               <Activity className="h-3 w-3 text-chart-1" />
               <span className="text-xs text-muted-foreground">
-                {hoveredCell.updates > 0 ? 'Active' : 'No activity'}
+                {hoveredCell.updates > 0 ? `${hoveredCell.updates} update${hoveredCell.updates > 1 ? 's' : ''}` : 'No activity'}
               </span>
             </div>
           </div>
