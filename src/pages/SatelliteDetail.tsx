@@ -197,7 +197,6 @@ const SatelliteDetail = () => {
                       <SelectItem value="day">Day</SelectItem>
                       <SelectItem value="week">Week</SelectItem>
                       <SelectItem value="month">Month</SelectItem>
-                      <SelectItem value="year">Year</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -205,7 +204,7 @@ const SatelliteDetail = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ContributionGrid data={[satellite]} timePeriod={timePeriod} />
+            <ContributionGrid data={[satellite]} />
           </CardContent>
         </Card>
 
@@ -223,7 +222,6 @@ const SatelliteDetail = () => {
                     <SelectItem value="day">Day</SelectItem>
                     <SelectItem value="week">Week</SelectItem>
                     <SelectItem value="month">Month</SelectItem>
-                    <SelectItem value="year">Year</SelectItem>
                   </SelectContent>
                 </Select>
               </CardTitle>
