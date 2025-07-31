@@ -4,11 +4,18 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Github, Activity } from 'lucide-react';
+import { Github, Activity, Calendar } from 'lucide-react';
 import { TLEData } from '@/pages/Dashboard';
 
 interface ContributionGridProps {
   data: TLEData[];
+}
+
+interface DayData {
+  index: number;
+  date: string;
+  dayName: string;
+  fullDate: string;
 }
 
 export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
@@ -16,7 +23,7 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
   const [maxSatellites, setMaxSatellites] = useState<number>(10);
   const [hoveredCell, setHoveredCell] = useState<{
     satellite: string;
-    day?: number;
+    dayData?: DayData;
     hour: number;
     isUpdated: boolean;
     updateTimes: string[];
@@ -26,10 +33,34 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   
   // Generate days based on time period
-  const getDays = () => {
-    if (timePeriod === 'day') return [0];
-    if (timePeriod === 'week') return Array.from({ length: 7 }, (_, i) => i);
-    return Array.from({ length: 30 }, (_, i) => i);
+  const getDays = (): DayData[] => {
+    if (timePeriod === 'day') {
+      // Show last 7 days for day view
+      return Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        return {
+          index: i,
+          date: date.toISOString().split('T')[0],
+          dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        };
+      });
+    }
+    if (timePeriod === 'week') {
+      return Array.from({ length: 7 }, (_, i) => ({
+        index: i,
+        date: `Week Day ${i + 1}`,
+        dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
+        fullDate: `Day ${i + 1}`
+      }));
+    }
+    return Array.from({ length: 30 }, (_, i) => ({
+      index: i,
+      date: `Day ${i + 1}`,
+      dayName: `D${i + 1}`,
+      fullDate: `Day ${i + 1}`
+    }));
   };
   
   // Binary color for updated/not updated
@@ -51,29 +82,12 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
   };
 
   // Calculate updates per satellite per hour/day with exact times
-  const getUpdatesForCell = (satellite: TLEData, day: number, hour: number) => {
-    // Filter updates for specific day and hour based on time period
-    let relevantUpdates = satellite.updates;
-    
-    if (timePeriod === 'week' || timePeriod === 'month') {
-      // For week/month view, filter by day first
-      relevantUpdates = satellite.updates.filter(update => {
-        // Simulate day-based filtering (in real app, parse update.date)
-        return Math.floor(Math.random() * getDays().length) === day;
-      });
-    }
-    
-    const hourUpdates = relevantUpdates.filter(update => update.hour === hour);
+  const getUpdatesForCell = (satellite: TLEData, dayIndex: number, hour: number) => {
+    const hourUpdates = satellite.updates.filter(update => update.hour === hour);
     return {
       isUpdated: hourUpdates.length > 0,
       times: hourUpdates.map(update => `${update.time}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`)
     };
-  };
-
-  const getDayLabel = (day: number) => {
-    if (timePeriod === 'day') return 'Today';
-    if (timePeriod === 'week') return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day];
-    return `Day ${day + 1}`;
   };
 
   const filteredData = data.slice(0, maxSatellites);
@@ -127,56 +141,29 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
 
         {/* Grid */}
         <div className="overflow-x-auto">
-          <div className="min-w-max space-y-1">
-            {timePeriod !== 'day' && (
-              <>
-                {/* Day labels for week/month */}
-                <div className="flex gap-1 mb-2">
-                  <div className="w-32"></div>
-                  {days.map(day => (
-                    <div key={day} className="text-xs text-center text-muted-foreground font-medium" style={{ width: `${24 * 16 + 23 * 4}px` }}>
-                      {getDayLabel(day)}
+          <div className="min-w-max space-y-2">
+            {/* Days header with dates */}
+            {timePeriod === 'day' && (
+              <div className="space-y-1">
+                {days.map(dayData => (
+                  <div key={dayData.index} className="flex gap-1 items-center">
+                    <div className="w-32 text-xs font-medium pr-2 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>{dayData.dayName} {dayData.fullDate}</span>
                     </div>
-                  ))}
-                </div>
-              </>
-            )}
-            
-            {/* Hour labels */}
-            <div className="flex gap-1 mb-2">
-              <div className="w-32 text-xs text-muted-foreground font-medium">Satellite</div>
-              {days.map(day => (
-                <div key={day} className="flex gap-1">
-                  {hours.map(hour => (
-                    <div key={hour} className="w-4 text-xs text-center text-muted-foreground">
-                      {hour % 6 === 0 ? hour : ''}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            {/* Satellite rows */}
-            {filteredData.map(satellite => (
-              <div key={satellite.noradId} className="flex gap-1 items-center">
-                <div className="w-32 text-xs font-medium truncate pr-2">
-                  <Badge 
-                    className={`${getTypeColor(satellite.type)} text-white border-0 text-xs px-1 py-0`}
-                  >
-                    {satellite.name}
-                  </Badge>
-                </div>
-                {days.map(day => (
-                  <div key={day} className="flex gap-1">
                     {hours.map(hour => {
-                      const updateData = getUpdatesForCell(satellite, day, hour);
+                      // Show data for first satellite as example
+                      const satellite = filteredData[0];
+                      if (!satellite) return <div key={hour} className="w-4 h-4" />;
+                      
+                      const updateData = getUpdatesForCell(satellite, dayData.index, hour);
                       return (
                         <div
                           key={hour}
                           className={`w-4 h-4 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
                           onMouseEnter={() => setHoveredCell({
                             satellite: satellite.name,
-                            day: timePeriod !== 'day' ? day : undefined,
+                            dayData,
                             hour,
                             isUpdated: updateData.isUpdated,
                             updateTimes: updateData.times
@@ -188,7 +175,47 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
                   </div>
                 ))}
               </div>
-            ))}
+            )}
+
+            {/* Traditional grid for week/month */}
+            {timePeriod !== 'day' && (
+              <>
+                <div className="flex gap-1 mb-2">
+                  <div className="w-32 text-xs text-muted-foreground font-medium">Satellite</div>
+                  {hours.map(hour => (
+                    <div key={hour} className="w-4 text-xs text-center text-muted-foreground">
+                      {hour % 6 === 0 ? hour : ''}
+                    </div>
+                  ))}
+                </div>
+
+                {filteredData.map(satellite => (
+                  <div key={satellite.noradId} className="flex gap-1 items-center">
+                    <div className="w-32 text-xs font-medium truncate pr-2">
+                      <Badge className={`${getTypeColor(satellite.type)} text-white border-0 text-xs px-1 py-0`}>
+                        {satellite.name}
+                      </Badge>
+                    </div>
+                    {hours.map(hour => {
+                      const updateData = getUpdatesForCell(satellite, 0, hour);
+                      return (
+                        <div
+                          key={hour}
+                          className={`w-4 h-4 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
+                          onMouseEnter={() => setHoveredCell({
+                            satellite: satellite.name,
+                            hour,
+                            isUpdated: updateData.isUpdated,
+                            updateTimes: updateData.times
+                          })}
+                          onMouseLeave={() => setHoveredCell(null)}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
 
@@ -196,8 +223,8 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
         {hoveredCell && (
           <div className="absolute z-10 bg-card border border-border rounded-lg p-3 shadow-lg pointer-events-none max-w-xs">
             <p className="font-semibold text-card-foreground">{hoveredCell.satellite}</p>
-            {hoveredCell.day !== undefined && (
-              <p className="text-sm text-muted-foreground">{getDayLabel(hoveredCell.day)}</p>
+            {hoveredCell.dayData && (
+              <p className="text-sm text-muted-foreground">{hoveredCell.dayData.dayName} {hoveredCell.dayData.fullDate}</p>
             )}
             <p className="text-sm text-muted-foreground">Hour: {hoveredCell.hour}:00 - {(hoveredCell.hour + 1) % 24}:00</p>
             <p className="text-sm">Status: {hoveredCell.isUpdated ? 'Updated' : 'Not Updated'}</p>
@@ -221,10 +248,6 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
             </div>
           </div>
         )}
-
-        <div className="text-sm text-muted-foreground">
-          Each square represents satellite update activity for that hour. Hover to see exact times.
-        </div>
       </CardContent>
     </Card>
   );
