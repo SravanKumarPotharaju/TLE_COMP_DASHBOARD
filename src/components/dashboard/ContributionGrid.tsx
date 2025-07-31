@@ -83,10 +83,20 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
 
   // Calculate updates per satellite per hour/day with exact times
   const getUpdatesForCell = (satellite: TLEData, dayIndex: number, hour: number) => {
+    // Use the actual satellite updates data instead of random generation
     const hourUpdates = satellite.updates.filter(update => update.hour === hour);
+    
+    // Generate consistent fake seconds/minutes based on satellite ID and hour for demo
+    const generateConsistentTime = (baseTime: string, satelliteId: string, hour: number) => {
+      const hash = satelliteId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const minutes = (hash + hour * 7) % 60;
+      const seconds = (hash + hour * 13) % 60;
+      return `${baseTime}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+    
     return {
       isUpdated: hourUpdates.length > 0,
-      times: hourUpdates.map(update => `${update.time}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`)
+      times: hourUpdates.map(update => generateConsistentTime(update.time, satellite.noradId, hour))
     };
   };
 
