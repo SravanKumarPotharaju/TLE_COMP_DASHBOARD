@@ -4,11 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Github, Activity, Calendar } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Github, Activity, Calendar, Satellite } from 'lucide-react';
 import { TLEData } from '@/pages/Dashboard';
 
 interface ContributionGridProps {
   data: TLEData[];
+  isSingleSatellite?: boolean;
 }
 
 interface DayData {
@@ -18,49 +20,78 @@ interface DayData {
   fullDate: string;
 }
 
-export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
+interface WeekData {
+  weekNumber: number;
+  days: DayData[];
+}
+
+export const ContributionGrid: React.FC<ContributionGridProps> = ({ data, isSingleSatellite = false }) => {
   const [timePeriod, setTimePeriod] = useState<string>('day');
   const [maxSatellites, setMaxSatellites] = useState<number>(10);
   const [hoveredCell, setHoveredCell] = useState<{
     satellite: string;
     dayData?: DayData;
+    weekData?: WeekData;
     hour: number;
     isUpdated: boolean;
     updateTimes: string[];
+    tleString?: string;
   } | null>(null);
 
   // Generate hours (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i);
   
-  // Generate days based on time period
+  // Generate days and weeks based on time period
   const getDays = (): DayData[] => {
     if (timePeriod === 'day') {
-      // Show last 7 days for day view
+      // Show current day only
+      const today = new Date();
+      return [{
+        index: 0,
+        date: today.toISOString().split('T')[0],
+        dayName: today.toLocaleDateString('en-US', { weekday: 'short' }),
+        fullDate: today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      }];
+    }
+    if (timePeriod === 'week') {
       return Array.from({ length: 7 }, (_, i) => {
         const date = new Date();
         date.setDate(date.getDate() - (6 - i));
         return {
           index: i,
           date: date.toISOString().split('T')[0],
-          dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
           fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         };
       });
     }
-    if (timePeriod === 'week') {
-      return Array.from({ length: 7 }, (_, i) => ({
-        index: i,
-        date: `Week Day ${i + 1}`,
-        dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][i],
-        fullDate: `Day ${i + 1}`
-      }));
+    // For month view, create 4 weeks
+    const weeks: DayData[] = [];
+    for (let week = 0; week < 4; week++) {
+      for (let day = 0; day < 7; day++) {
+        const date = new Date();
+        date.setDate(date.getDate() - ((3 - week) * 7) + day);
+        weeks.push({
+          index: week * 7 + day,
+          date: date.toISOString().split('T')[0],
+          dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day],
+          fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        });
+      }
     }
-    return Array.from({ length: 30 }, (_, i) => ({
-      index: i,
-      date: `Day ${i + 1}`,
-      dayName: `D${i + 1}`,
-      fullDate: `Day ${i + 1}`
-    }));
+    return weeks;
+  };
+
+  const getWeeks = (): WeekData[] => {
+    const days = getDays();
+    const weeks: WeekData[] = [];
+    for (let i = 0; i < 4; i++) {
+      weeks.push({
+        weekNumber: i + 1,
+        days: days.slice(i * 7, (i + 1) * 7)
+      });
+    }
+    return weeks;
   };
   
   // Binary color for updated/not updated
@@ -93,15 +124,207 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
       const seconds = (hash + hour * 13) % 60;
       return `${baseTime}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     };
+
+    // Generate mock TLE string for hover tooltip
+    const generateTLEString = (satelliteId: string) => {
+      return `1 ${satelliteId}U 98067A   24001.50000000  .00000000  00000-0  00000-0 0  0000\n2 ${satelliteId}  51.6000   0.0000 0000000   0.0000   0.0000 15.50000000000000`;
+    };
     
     return {
       isUpdated: hourUpdates.length > 0,
-      times: hourUpdates.map(update => generateConsistentTime(update.time, satellite.noradId, hour))
+      times: hourUpdates.map(update => generateConsistentTime(update.time, satellite.noradId, hour)),
+      tleString: generateTLEString(satellite.noradId)
     };
   };
 
-  const filteredData = data.slice(0, maxSatellites);
+  const filteredData = isSingleSatellite ? data : data.slice(0, maxSatellites);
   const days = getDays();
+  const weeks = getWeeks();
+
+  // Render single satellite grids for week/month view
+  const renderSatelliteGrid = (satellite: TLEData, satelliteIndex: number) => {
+    if (timePeriod === 'day') {
+      return (
+        <div key={satellite.noradId} className="space-y-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Satellite className="h-4 w-4 text-chart-1" />
+            <Badge className={`${getTypeColor(satellite.type)} text-white border-0 text-sm px-2 py-1`}>
+              {satellite.name}
+            </Badge>
+          </div>
+          <div className="flex gap-1">
+            {hours.map(hour => {
+              const updateData = getUpdatesForCell(satellite, 0, hour);
+              return (
+                <HoverCard key={hour}>
+                  <HoverCardTrigger asChild>
+                    <div
+                      className={`w-6 h-6 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all flex items-center justify-center text-xs font-medium`}
+                    >
+                      {hour}
+                    </div>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80">
+                    <div className="space-y-2">
+                      <h4 className="font-semibold">{satellite.name}</h4>
+                      <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
+                      <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
+                      {updateData.times.length > 0 && (
+                        <div>
+                          <p className="text-xs font-medium mb-1">Update Times:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {updateData.times.map((time, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {time}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {updateData.tleString && (
+                        <div>
+                          <p className="text-xs font-medium mb-1">TLE String:</p>
+                          <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap">
+                            {updateData.tleString}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (timePeriod === 'week') {
+      return (
+        <div key={satellite.noradId} className="space-y-4 mb-8">
+          <div className="flex items-center gap-2">
+            <Satellite className="h-4 w-4 text-chart-1" />
+            <Badge className={`${getTypeColor(satellite.type)} text-white border-0 text-sm px-2 py-1`}>
+              {satellite.name}
+            </Badge>
+          </div>
+          <div className="space-y-1">
+            {days.map(dayData => (
+              <div key={dayData.index} className="flex gap-1 items-center">
+                <div className="w-24 text-xs font-medium pr-2">
+                  <span>{dayData.dayName} {dayData.fullDate}</span>
+                </div>
+                {hours.map(hour => {
+                  const updateData = getUpdatesForCell(satellite, dayData.index, hour);
+                  return (
+                    <HoverCard key={hour}>
+                      <HoverCardTrigger asChild>
+                        <div
+                          className={`w-4 h-4 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
+                        />
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80">
+                        <div className="space-y-2">
+                          <h4 className="font-semibold">{satellite.name}</h4>
+                          <p className="text-sm text-muted-foreground">{dayData.dayName} {dayData.fullDate}</p>
+                          <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
+                          <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
+                          {updateData.times.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium mb-1">Update Times:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {updateData.times.map((time, index) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {time}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {updateData.tleString && (
+                            <div>
+                              <p className="text-xs font-medium mb-1">TLE String:</p>
+                              <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap">
+                                {updateData.tleString}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (timePeriod === 'month') {
+      return (
+        <div key={satellite.noradId} className="space-y-4 mb-8">
+          <div className="flex items-center gap-2">
+            <Satellite className="h-4 w-4 text-chart-1" />
+            <Badge className={`${getTypeColor(satellite.type)} text-white border-0 text-sm px-2 py-1`}>
+              {satellite.name}
+            </Badge>
+          </div>
+          <div className="space-y-1">
+            {weeks.map(weekData => (
+              <div key={weekData.weekNumber} className="flex gap-1 items-center">
+                <div className="w-24 text-xs font-medium pr-2">
+                  <span>Week {weekData.weekNumber}</span>
+                </div>
+                {hours.map(hour => {
+                  const updateData = getUpdatesForCell(satellite, weekData.weekNumber - 1, hour);
+                  return (
+                    <HoverCard key={hour}>
+                      <HoverCardTrigger asChild>
+                        <div
+                          className={`w-4 h-4 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
+                        />
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80">
+                        <div className="space-y-2">
+                          <h4 className="font-semibold">{satellite.name}</h4>
+                          <p className="text-sm text-muted-foreground">Week {weekData.weekNumber}</p>
+                          <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
+                          <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
+                          {updateData.times.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium mb-1">Update Times:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {updateData.times.map((time, index) => (
+                                  <Badge key={index} variant="secondary" className="text-xs">
+                                    {time}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {updateData.tleString && (
+                            <div>
+                              <p className="text-xs font-medium mb-1">TLE String:</p>
+                              <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap">
+                                {updateData.tleString}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   return (
     <Card className="relative">
@@ -128,18 +351,20 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
             </Select>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="max-satellites">Max Satellites</Label>
-            <Input
-              id="max-satellites"
-              type="number"
-              value={maxSatellites}
-              onChange={(e) => setMaxSatellites(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-20"
-              min="1"
-              max="50"
-            />
-          </div>
+          {!isSingleSatellite && (
+            <div className="space-y-2">
+              <Label htmlFor="max-satellites">Max Satellites</Label>
+              <Input
+                id="max-satellites"
+                type="number"
+                value={maxSatellites}
+                onChange={(e) => setMaxSatellites(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-20"
+                min="1"
+                max="50"
+              />
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-sm">
             <div className="w-3 h-3 rounded-sm bg-muted/30"></div>
@@ -151,54 +376,18 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
 
         {/* Grid */}
         <div className="overflow-x-auto">
-          <div className="min-w-max space-y-2">
-            {/* Days header with dates */}
-            {timePeriod === 'day' && (
-              <div className="space-y-1">
-                {days.map(dayData => (
-                  <div key={dayData.index} className="flex gap-1 items-center">
-                    <div className="w-32 text-xs font-medium pr-2 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{dayData.dayName} {dayData.fullDate}</span>
-                    </div>
-                    {hours.map(hour => {
-                      // Show data for first satellite as example
-                      const satellite = filteredData[0];
-                      if (!satellite) return <div key={hour} className="w-4 h-4" />;
-                      
-                      const updateData = getUpdatesForCell(satellite, dayData.index, hour);
-                      return (
-                        <div
-                          key={hour}
-                          className={`w-4 h-4 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
-                          onMouseEnter={() => setHoveredCell({
-                            satellite: satellite.name,
-                            dayData,
-                            hour,
-                            isUpdated: updateData.isUpdated,
-                            updateTimes: updateData.times
-                          })}
-                          onMouseLeave={() => setHoveredCell(null)}
-                        />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Traditional grid for week/month */}
-            {timePeriod !== 'day' && (
-              <>
+          <div className="min-w-max space-y-4">
+            {/* Dashboard view - different layouts for different time periods */}
+            {!isSingleSatellite && timePeriod === 'day' && (
+              <div className="space-y-2">
                 <div className="flex gap-1 mb-2">
                   <div className="w-32 text-xs text-muted-foreground font-medium">Satellite</div>
                   {hours.map(hour => (
-                    <div key={hour} className="w-4 text-xs text-center text-muted-foreground">
-                      {hour % 6 === 0 ? hour : ''}
+                    <div key={hour} className="w-6 text-xs text-center text-muted-foreground">
+                      {hour % 4 === 0 ? hour : ''}
                     </div>
                   ))}
                 </div>
-
                 {filteredData.map(satellite => (
                   <div key={satellite.noradId} className="flex gap-1 items-center">
                     <div className="w-32 text-xs font-medium truncate pr-2">
@@ -209,55 +398,55 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data }) => {
                     {hours.map(hour => {
                       const updateData = getUpdatesForCell(satellite, 0, hour);
                       return (
-                        <div
-                          key={hour}
-                          className={`w-4 h-4 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
-                          onMouseEnter={() => setHoveredCell({
-                            satellite: satellite.name,
-                            hour,
-                            isUpdated: updateData.isUpdated,
-                            updateTimes: updateData.times
-                          })}
-                          onMouseLeave={() => setHoveredCell(null)}
-                        />
+                        <HoverCard key={hour}>
+                          <HoverCardTrigger asChild>
+                            <div
+                              className={`w-6 h-6 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
+                            />
+                          </HoverCardTrigger>
+                          <HoverCardContent className="w-80">
+                            <div className="space-y-2">
+                              <h4 className="font-semibold">{satellite.name}</h4>
+                              <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
+                              <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
+                              {updateData.times.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium mb-1">Update Times:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {updateData.times.map((time, index) => (
+                                      <Badge key={index} variant="secondary" className="text-xs">
+                                        {time}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {updateData.tleString && (
+                                <div>
+                                  <p className="text-xs font-medium mb-1">TLE String:</p>
+                                  <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap">
+                                    {updateData.tleString}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
                       );
                     })}
                   </div>
                 ))}
-              </>
+              </div>
+            )}
+
+            {/* Single satellite grids for week/month OR all layouts for single satellite view */}
+            {(isSingleSatellite || timePeriod !== 'day') && (
+              <div className="space-y-6">
+                {filteredData.map((satellite, index) => renderSatelliteGrid(satellite, index))}
+              </div>
             )}
           </div>
         </div>
-
-        {/* Tooltip */}
-        {hoveredCell && (
-          <div className="absolute z-10 bg-card border border-border rounded-lg p-3 shadow-lg pointer-events-none max-w-xs">
-            <p className="font-semibold text-card-foreground">{hoveredCell.satellite}</p>
-            {hoveredCell.dayData && (
-              <p className="text-sm text-muted-foreground">{hoveredCell.dayData.dayName} {hoveredCell.dayData.fullDate}</p>
-            )}
-            <p className="text-sm text-muted-foreground">Hour: {hoveredCell.hour}:00 - {(hoveredCell.hour + 1) % 24}:00</p>
-            <p className="text-sm">Status: {hoveredCell.isUpdated ? 'Updated' : 'Not Updated'}</p>
-            {hoveredCell.updateTimes.length > 0 && (
-              <div className="mt-2">
-                <p className="text-xs text-muted-foreground mb-1">Exact Update Times:</p>
-                <div className="flex flex-wrap gap-1">
-                  {hoveredCell.updateTimes.map((time, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs px-1 py-0">
-                      {time}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div className="flex items-center gap-1 mt-2">
-              <Activity className="h-3 w-3 text-chart-1" />
-              <span className="text-xs text-muted-foreground">
-                {hoveredCell.isUpdated ? 'Activity detected' : 'No activity'}
-              </span>
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
