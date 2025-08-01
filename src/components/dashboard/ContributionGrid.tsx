@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Github, Activity, Calendar, Satellite } from 'lucide-react';
-import { TLEData } from '@/pages/Dashboard';
+import { TLEData, TLEUpdate } from '@/pages/Dashboard';
+import { formatEpochTime } from '@/utils/tleUtils';
 
 interface ContributionGridProps {
   data: TLEData[];
@@ -112,28 +113,42 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data, isSing
     return typeColors[type] || 'bg-chart-1';
   };
 
-  // Calculate updates per satellite per hour/day with exact times
+  // Calculate updates per satellite per hour/day using real TLE epoch times
   const getUpdatesForCell = (satellite: TLEData, dayIndex: number, hour: number) => {
-    // Use the actual satellite updates data instead of random generation
-    const hourUpdates = satellite.updates.filter(update => update.hour === hour);
-    
-    // Generate consistent fake seconds/minutes based on satellite ID and hour for demo
-    const generateConsistentTime = (baseTime: string, satelliteId: string, hour: number) => {
-      const hash = satelliteId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const minutes = (hash + hour * 7) % 60;
-      const seconds = (hash + hour * 13) % 60;
-      return `${baseTime}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    };
-
-    // Generate mock TLE string for hover tooltip
-    const generateTLEString = (satelliteId: string) => {
-      return `1 ${satelliteId}U 98067A   24001.50000000  .00000000  00000-0  00000-0 0  0000\n2 ${satelliteId}  51.6000   0.0000 0000000   0.0000   0.0000 15.50000000000000`;
-    };
+    // Filter updates for specific day and hour based on TLE epoch time
+    const relevantUpdates = satellite.updates.filter(update => {
+      const updateDate = new Date(update.epochTime);
+      const updateHour = updateDate.getUTCHours();
+      
+      if (timePeriod === 'day') {
+        // For day view, only match hour
+        return updateHour === hour;
+      } else if (timePeriod === 'week') {
+        // For week view, match day and hour
+        const today = new Date();
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() - (6 - dayIndex));
+        
+        return updateDate.toDateString() === targetDate.toDateString() && updateHour === hour;
+      } else if (timePeriod === 'month') {
+        // For month view, match week and hour
+        const today = new Date();
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - ((3 - dayIndex) * 7));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        
+        return updateDate >= weekStart && updateDate <= weekEnd && updateHour === hour;
+      }
+      
+      return false;
+    });
     
     return {
-      isUpdated: hourUpdates.length > 0,
-      times: hourUpdates.map(update => generateConsistentTime(update.time, satellite.noradId, hour)),
-      tleString: generateTLEString(satellite.noradId)
+      isUpdated: relevantUpdates.length > 0,
+      updates: relevantUpdates,
+      epochTimes: relevantUpdates.map(update => formatEpochTime(update.epochTime)),
+      tleStrings: relevantUpdates.map(update => `${update.tleLine1}\n${update.tleLine2}`)
     };
   };
 
@@ -164,33 +179,38 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data, isSing
                       {hour}
                     </div>
                   </HoverCardTrigger>
-                  <HoverCardContent className="w-80">
-                    <div className="space-y-2">
-                      <h4 className="font-semibold">{satellite.name}</h4>
-                      <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
-                      <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
-                      {updateData.times.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium mb-1">Update Times:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {updateData.times.map((time, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {time}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {updateData.tleString && (
-                        <div>
-                          <p className="text-xs font-medium mb-1">TLE String:</p>
-                          <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap">
-                            {updateData.tleString}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  </HoverCardContent>
+                   <HoverCardContent className="w-96">
+                     <div className="space-y-2">
+                       <h4 className="font-semibold">{satellite.name}</h4>
+                       <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
+                       <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
+                       {updateData.epochTimes.length > 0 && (
+                         <div>
+                           <p className="text-xs font-medium mb-1">TLE Epoch Times:</p>
+                           <div className="space-y-1">
+                             {updateData.epochTimes.map((epochTime, index) => (
+                               <Badge key={index} variant="secondary" className="text-xs block w-fit">
+                                 {epochTime}
+                               </Badge>
+                             ))}
+                           </div>
+                         </div>
+                       )}
+                       {updateData.tleStrings.length > 0 && (
+                         <div>
+                           <p className="text-xs font-medium mb-1">TLE Strings:</p>
+                           {updateData.tleStrings.map((tleString, index) => (
+                             <div key={index} className="mb-2">
+                               <p className="text-xs text-muted-foreground mb-1">Update {index + 1}:</p>
+                               <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap font-mono">
+                                 {tleString}
+                               </pre>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                     </div>
+                   </HoverCardContent>
                 </HoverCard>
               );
             })}
@@ -223,34 +243,39 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data, isSing
                           className={`w-4 h-4 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
                         />
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-80">
-                        <div className="space-y-2">
-                          <h4 className="font-semibold">{satellite.name}</h4>
-                          <p className="text-sm text-muted-foreground">{dayData.dayName} {dayData.fullDate}</p>
-                          <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
-                          <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
-                          {updateData.times.length > 0 && (
-                            <div>
-                              <p className="text-xs font-medium mb-1">Update Times:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {updateData.times.map((time, index) => (
-                                  <Badge key={index} variant="secondary" className="text-xs">
-                                    {time}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {updateData.tleString && (
-                            <div>
-                              <p className="text-xs font-medium mb-1">TLE String:</p>
-                              <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap">
-                                {updateData.tleString}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      </HoverCardContent>
+                       <HoverCardContent className="w-96">
+                         <div className="space-y-2">
+                           <h4 className="font-semibold">{satellite.name}</h4>
+                           <p className="text-sm text-muted-foreground">{dayData.dayName} {dayData.fullDate}</p>
+                           <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
+                           <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
+                           {updateData.epochTimes.length > 0 && (
+                             <div>
+                               <p className="text-xs font-medium mb-1">TLE Epoch Times:</p>
+                               <div className="space-y-1">
+                                 {updateData.epochTimes.map((epochTime, index) => (
+                                   <Badge key={index} variant="secondary" className="text-xs block w-fit">
+                                     {epochTime}
+                                   </Badge>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                           {updateData.tleStrings.length > 0 && (
+                             <div>
+                               <p className="text-xs font-medium mb-1">TLE Strings:</p>
+                               {updateData.tleStrings.map((tleString, index) => (
+                                 <div key={index} className="mb-2">
+                                   <p className="text-xs text-muted-foreground mb-1">Update {index + 1}:</p>
+                                   <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap font-mono">
+                                     {tleString}
+                                   </pre>
+                                 </div>
+                               ))}
+                             </div>
+                           )}
+                         </div>
+                       </HoverCardContent>
                     </HoverCard>
                   );
                 })}
@@ -285,34 +310,39 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data, isSing
                           className={`w-4 h-4 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
                         />
                       </HoverCardTrigger>
-                      <HoverCardContent className="w-80">
-                        <div className="space-y-2">
-                          <h4 className="font-semibold">{satellite.name}</h4>
-                          <p className="text-sm text-muted-foreground">Week {weekData.weekNumber}</p>
-                          <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
-                          <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
-                          {updateData.times.length > 0 && (
-                            <div>
-                              <p className="text-xs font-medium mb-1">Update Times:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {updateData.times.map((time, index) => (
-                                  <Badge key={index} variant="secondary" className="text-xs">
-                                    {time}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {updateData.tleString && (
-                            <div>
-                              <p className="text-xs font-medium mb-1">TLE String:</p>
-                              <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap">
-                                {updateData.tleString}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      </HoverCardContent>
+                       <HoverCardContent className="w-96">
+                         <div className="space-y-2">
+                           <h4 className="font-semibold">{satellite.name}</h4>
+                           <p className="text-sm text-muted-foreground">Week {weekData.weekNumber}</p>
+                           <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
+                           <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
+                           {updateData.epochTimes.length > 0 && (
+                             <div>
+                               <p className="text-xs font-medium mb-1">TLE Epoch Times:</p>
+                               <div className="space-y-1">
+                                 {updateData.epochTimes.map((epochTime, index) => (
+                                   <Badge key={index} variant="secondary" className="text-xs block w-fit">
+                                     {epochTime}
+                                   </Badge>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                           {updateData.tleStrings.length > 0 && (
+                             <div>
+                               <p className="text-xs font-medium mb-1">TLE Strings:</p>
+                               {updateData.tleStrings.map((tleString, index) => (
+                                 <div key={index} className="mb-2">
+                                   <p className="text-xs text-muted-foreground mb-1">Update {index + 1}:</p>
+                                   <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap font-mono">
+                                     {tleString}
+                                   </pre>
+                                 </div>
+                               ))}
+                             </div>
+                           )}
+                         </div>
+                       </HoverCardContent>
                     </HoverCard>
                   );
                 })}
@@ -404,33 +434,38 @@ export const ContributionGrid: React.FC<ContributionGridProps> = ({ data, isSing
                               className={`w-6 h-6 rounded-sm ${getUpdateColor(updateData.isUpdated)} border border-border/20 cursor-pointer hover:ring-2 hover:ring-chart-1/50 transition-all`}
                             />
                           </HoverCardTrigger>
-                          <HoverCardContent className="w-80">
-                            <div className="space-y-2">
-                              <h4 className="font-semibold">{satellite.name}</h4>
-                              <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
-                              <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
-                              {updateData.times.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-medium mb-1">Update Times:</p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {updateData.times.map((time, index) => (
-                                      <Badge key={index} variant="secondary" className="text-xs">
-                                        {time}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              {updateData.tleString && (
-                                <div>
-                                  <p className="text-xs font-medium mb-1">TLE String:</p>
-                                  <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap">
-                                    {updateData.tleString}
-                                  </pre>
-                                </div>
-                              )}
-                            </div>
-                          </HoverCardContent>
+                           <HoverCardContent className="w-96">
+                             <div className="space-y-2">
+                               <h4 className="font-semibold">{satellite.name}</h4>
+                               <p className="text-sm text-muted-foreground">Hour: {hour}:00 - {(hour + 1) % 24}:00</p>
+                               <p className="text-sm">Status: {updateData.isUpdated ? 'Updated' : 'Not Updated'}</p>
+                               {updateData.epochTimes.length > 0 && (
+                                 <div>
+                                   <p className="text-xs font-medium mb-1">TLE Epoch Times:</p>
+                                   <div className="space-y-1">
+                                     {updateData.epochTimes.map((epochTime, index) => (
+                                       <Badge key={index} variant="secondary" className="text-xs block w-fit">
+                                         {epochTime}
+                                       </Badge>
+                                     ))}
+                                   </div>
+                                 </div>
+                               )}
+                               {updateData.tleStrings.length > 0 && (
+                                 <div>
+                                   <p className="text-xs font-medium mb-1">TLE Strings:</p>
+                                   {updateData.tleStrings.map((tleString, index) => (
+                                     <div key={index} className="mb-2">
+                                       <p className="text-xs text-muted-foreground mb-1">Update {index + 1}:</p>
+                                       <pre className="text-xs bg-muted p-2 rounded text-muted-foreground whitespace-pre-wrap font-mono">
+                                         {tleString}
+                                       </pre>
+                                     </div>
+                                   ))}
+                                 </div>
+                               )}
+                             </div>
+                           </HoverCardContent>
                         </HoverCard>
                       );
                     })}
