@@ -2,18 +2,11 @@
  * TLE (Two-Line Element) parsing and comparison utilities
  */
 
-export interface ParsedEpoch {
-  year: number;
-  dayOfYear: number;
-  fractionalDay: number;
-  date: Date;
-}
-
 /**
  * Parse TLE epoch from Line 1
  * Format: YYDDD.DDDDDDDD where YY is year, DDD is day of year, and DDDDDDDD is fractional day
  */
-export function parseTLEEpoch(tleLine1: string): ParsedEpoch {
+export function parseTLEEpoch(tleLine1) {
   // Extract epoch from positions 18-32 of TLE Line 1
   const epochString = tleLine1.substring(18, 32);
   
@@ -45,8 +38,8 @@ export function parseTLEEpoch(tleLine1: string): ParsedEpoch {
  * Compare two TLE strings to check if they are identical
  * Only compares Line 1 and Line 2 content (ignoring whitespace)
  */
-export function compareTLEStrings(tle1Line1: string, tle1Line2: string, tle2Line1: string, tle2Line2: string): boolean {
-  const normalize = (line: string) => line.trim().replace(/\s+/g, ' ');
+export function compareTLEStrings(tle1Line1, tle1Line2, tle2Line1, tle2Line2) {
+  const normalize = (line) => line.trim().replace(/\s+/g, ' ');
   
   return normalize(tle1Line1) === normalize(tle2Line1) && 
          normalize(tle1Line2) === normalize(tle2Line2);
@@ -55,21 +48,21 @@ export function compareTLEStrings(tle1Line1: string, tle1Line2: string, tle2Line
 /**
  * Extract NORAD ID from TLE Line 1
  */
-export function extractNoradId(tleLine1: string): string {
+export function extractNoradId(tleLine1) {
   return tleLine1.substring(2, 7).trim();
 }
 
 /**
  * Format epoch date for display
  */
-export function formatEpochTime(date: Date): string {
+export function formatEpochTime(date) {
   return date.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
 }
 
 /**
  * Validate TLE format
  */
-export function validateTLE(line1: string, line2: string): boolean {
+export function validateTLE(line1, line2) {
   // Basic TLE format validation
   if (line1.length !== 69 || line2.length !== 69) return false;
   if (!line1.startsWith('1 ') || !line2.startsWith('2 ')) return false;

@@ -2,17 +2,12 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp } from 'lucide-react';
-import { TLEData } from '@/pages/Dashboard';
 import { useNavigate } from 'react-router-dom';
 
-interface SatelliteBarChartProps {
-  data: TLEData[];
-}
-
-export const SatelliteBarChart: React.FC<SatelliteBarChartProps> = ({ data }) => {
+export const SatelliteBarChart = ({ data }) => {
   const navigate = useNavigate();
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
@@ -30,7 +25,7 @@ export const SatelliteBarChart: React.FC<SatelliteBarChartProps> = ({ data }) =>
     return null;
   };
 
-  const handleBarClick = (data: any) => {
+  const handleBarClick = (data) => {
     navigate(`/satellite/${data.noradId}`);
   };
 
@@ -65,7 +60,7 @@ export const SatelliteBarChart: React.FC<SatelliteBarChartProps> = ({ data }) =>
               className="cursor-pointer"
             >
               {data.map((entry, index) => {
-                const typeColors: Record<string, string> = {
+                const typeColors = {
                   'Communication': 'hsl(var(--chart-1))',
                   'Space Station': 'hsl(var(--chart-2))',
                   'Military': 'hsl(var(--chart-3))',

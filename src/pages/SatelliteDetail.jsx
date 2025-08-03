@@ -8,15 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Search, Satellite, Globe, Clock, TrendingUp, Activity, Orbit, Settings } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ScatterChart, Scatter, ReferenceLine } from 'recharts';
-import { TLEData } from './Dashboard';
 import { useSatelliteContext } from '@/contexts/SatelliteContext';
 import { ContributionGrid } from '@/components/dashboard/ContributionGrid';
 
 const SatelliteDetail = () => {
-  const { noradId } = useParams<{ noradId: string }>();
+  const { noradId } = useParams();
   const navigate = useNavigate();
   const { tleData } = useSatelliteContext();
-  const [satellite, setSatellite] = useState<TLEData | null>(null);
+  const [satellite, setSatellite] = useState(null);
   const [searchNoradId, setSearchNoradId] = useState('');
   const [selectedOrbitalParam, setSelectedOrbitalParam] = useState('inclination');
 
@@ -58,7 +57,7 @@ const SatelliteDetail = () => {
   const getOrbitalTimeSeriesData = () => {
     return orbitalTimeSeriesData.map(item => ({
       timestamp: item.timestamp,
-      value: item[selectedOrbitalParam as keyof typeof item],
+      value: item[selectedOrbitalParam],
       date: item.timestamp.split(' ')[0],
       time: item.timestamp.split(' ')[1]
     }));
@@ -71,7 +70,7 @@ const SatelliteDetail = () => {
       setSatellite(foundSatellite);
     } else {
       // Fallback to mock data if satellite not found in loaded data
-      const mockSatellite: TLEData = {
+      const mockSatellite = {
         noradId: noradId || "25544",
         name: "ISS (ZARYA)",
         type: "Space Station",

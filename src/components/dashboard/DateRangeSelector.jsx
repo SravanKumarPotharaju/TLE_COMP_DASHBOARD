@@ -5,16 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar, Loader2 } from 'lucide-react';
 
-interface DateRangeSelectorProps {
-  fromDate: string;
-  toDate: string;
-  onFromDateChange: (date: string) => void;
-  onToDateChange: (date: string) => void;
-  onLoad: () => void;
-  loading: boolean;
-}
-
-export const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({
+export const DateRangeSelector = ({
   fromDate,
   toDate,
   onFromDateChange,

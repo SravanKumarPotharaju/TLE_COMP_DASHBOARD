@@ -2,13 +2,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { PieChart as PieChartIcon } from 'lucide-react';
-import { TLEData } from '@/pages/Dashboard';
 
-interface SatelliteTypeChartProps {
-  data: TLEData[];
-}
-
-export const SatelliteTypeChart: React.FC<SatelliteTypeChartProps> = ({ data }) => {
+export const SatelliteTypeChart = ({ data }) => {
   const typeData = data.reduce((acc, satellite) => {
     const existing = acc.find(item => item.type === satellite.type);
     if (existing) {
@@ -22,7 +17,7 @@ export const SatelliteTypeChart: React.FC<SatelliteTypeChartProps> = ({ data }) 
       });
     }
     return acc;
-  }, [] as Array<{ type: string; count: number; totalUpdates: number }>);
+  }, []);
 
   const COLORS = [
     'hsl(var(--chart-1))',
@@ -33,7 +28,7 @@ export const SatelliteTypeChart: React.FC<SatelliteTypeChartProps> = ({ data }) 
     'hsl(var(--satellite-existing))'
   ];
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (

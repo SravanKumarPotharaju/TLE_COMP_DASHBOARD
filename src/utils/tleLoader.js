@@ -4,50 +4,11 @@
 
 import { parseTLEEpoch, compareTLEStrings, extractNoradId, validateTLE } from './tleUtils';
 
-export interface TLEFileData {
-  filename: string;
-  content: string;
-  timestamp: Date;
-  hour: number;
-  minute: number;
-  second: number;
-}
-
-export interface SatelliteTLE {
-  noradId: string;
-  name: string;
-  line1: string;
-  line2: string;
-  epochTime: Date;
-  filename: string;
-}
-
-export interface ParsedTLEComparison {
-  noradId: string;
-  name: string;
-  type: string;
-  updates: Array<{
-    epochTime: Date;
-    tleLine1: string;
-    tleLine2: string;
-    hour: number;
-    date: string;
-    time: string;
-    filename: string;
-  }>;
-  updateCount: number;
-  lastUpdated: string;
-  epoch: string;
-  inclination: number;
-  eccentricity: number;
-  meanMotion: number;
-}
-
 /**
  * Generate date range between two dates
  */
-function generateDateRange(startDate: string, endDate: string): string[] {
-  const dates: string[] = [];
+function generateDateRange(startDate, endDate) {
+  const dates = [];
   const start = new Date(startDate);
   const end = new Date(endDate);
   
@@ -63,7 +24,7 @@ function generateDateRange(startDate: string, endDate: string): string[] {
 /**
  * Parse time from filename (tle_HHMMSS.txt)
  */
-function parseTimeFromFilename(filename: string): { hour: number; minute: number; second: number } | null {
+function parseTimeFromFilename(filename) {
   const match = filename.match(/tle_(\d{2})(\d{2})(\d{2})\.txt$/);
   if (!match) return null;
   
@@ -77,13 +38,13 @@ function parseTimeFromFilename(filename: string): { hour: number; minute: number
 /**
  * Load TLE files from a specific date folder
  */
-async function loadTLEFilesFromDate(date: string): Promise<TLEFileData[]> {
-  const files: TLEFileData[] = [];
+async function loadTLEFilesFromDate(date) {
+  const files = [];
   
   try {
     // Try to load an index file that lists available TLE files for this date
     const indexResponse = await fetch(`/tle-data/${date}/index.json`);
-    let filenames: string[] = [];
+    let filenames = [];
     
     if (indexResponse.ok) {
       const indexData = await indexResponse.json();
@@ -144,9 +105,9 @@ async function loadTLEFilesFromDate(date: string): Promise<TLEFileData[]> {
 /**
  * Parse TLE content to extract individual satellites
  */
-function parseTLEContent(content: string, filename: string): SatelliteTLE[] {
+function parseTLEContent(content, filename) {
   const lines = content.trim().split('\n').filter(line => line.trim());
-  const satellites: SatelliteTLE[] = [];
+  const satellites = [];
   
   for (let i = 0; i < lines.length; i += 3) {
     if (i + 2 >= lines.length) break;
@@ -176,7 +137,7 @@ function parseTLEContent(content: string, filename: string): SatelliteTLE[] {
 /**
  * Classify satellite type based on name patterns
  */
-function classifySatelliteType(name: string): string {
+function classifySatelliteType(name) {
   const upperName = name.toUpperCase();
   
   if (upperName.includes('STARLINK')) return 'Communication';
@@ -193,7 +154,7 @@ function classifySatelliteType(name: string): string {
 /**
  * Extract orbital parameters from TLE
  */
-function extractOrbitalParameters(line1: string, line2: string) {
+function extractOrbitalParameters(line1, line2) {
   // Parse orbital elements from TLE Line 2
   const inclination = parseFloat(line2.substring(8, 16));
   const raan = parseFloat(line2.substring(17, 25));
@@ -215,9 +176,9 @@ function extractOrbitalParameters(line1: string, line2: string) {
 /**
  * Main function to load and compare TLE data based on date range
  */
-export async function loadAndCompareTLEData(fromDate: string, toDate: string): Promise<ParsedTLEComparison[]> {
+export async function loadAndCompareTLEData(fromDate, toDate) {
   const dates = generateDateRange(fromDate, toDate);
-  const allSatelliteData = new Map<string, SatelliteTLE[]>();
+  const allSatelliteData = new Map();
   
   // Load all TLE files from date range
   for (const date of dates) {
@@ -230,13 +191,13 @@ export async function loadAndCompareTLEData(fromDate: string, toDate: string): P
         if (!allSatelliteData.has(satellite.noradId)) {
           allSatelliteData.set(satellite.noradId, []);
         }
-        allSatelliteData.get(satellite.noradId)!.push(satellite);
+        allSatelliteData.get(satellite.noradId).push(satellite);
       }
     }
   }
   
   // Process each satellite's data to find real updates
-  const comparisonResults: ParsedTLEComparison[] = [];
+  const comparisonResults = [];
   
   for (const [noradId, satelliteEntries] of allSatelliteData) {
     if (satelliteEntries.length === 0) continue;
@@ -244,8 +205,8 @@ export async function loadAndCompareTLEData(fromDate: string, toDate: string): P
     // Sort by epoch time
     satelliteEntries.sort((a, b) => a.epochTime.getTime() - b.epochTime.getTime());
     
-    const updates: ParsedTLEComparison['updates'] = [];
-    let previousTLE: { line1: string; line2: string } | null = null;
+    const updates = [];
+    let previousTLE = null;
     
     for (const entry of satelliteEntries) {
       // Compare with previous TLE to detect real changes

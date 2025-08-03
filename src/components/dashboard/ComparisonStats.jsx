@@ -2,13 +2,8 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Satellite, TrendingUp, TrendingDown, Activity, Plus, Archive, ArrowUp, ArrowDown } from 'lucide-react';
-import { TLEData } from '@/pages/Dashboard';
 
-interface ComparisonStatsProps {
-  data: TLEData[];
-}
-
-export const ComparisonStats: React.FC<ComparisonStatsProps> = ({ data }) => {
+export const ComparisonStats = ({ data }) => {
   const totalSatellites = data.length;
   const totalUpdates = data.reduce((sum, sat) => sum + sat.updateCount, 0);
   const avgUpdateCount = totalUpdates / totalSatellites;

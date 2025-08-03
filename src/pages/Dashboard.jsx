@@ -14,28 +14,6 @@ import { ContributionGrid } from '@/components/dashboard/ContributionGrid';
 import { useSatelliteContext } from '@/contexts/SatelliteContext';
 import { useToast } from '@/hooks/use-toast';
 
-export interface TLEUpdate {
-  epochTime: Date;
-  tleLine1: string;
-  tleLine2: string;
-  hour: number;
-  date: string;
-  time: string;
-}
-
-export interface TLEData {
-  noradId: string;
-  name: string;
-  type: string;
-  updateCount: number;
-  lastUpdated: string;
-  epoch: string;
-  inclination: number;
-  eccentricity: number;
-  meanMotion: number;
-  updates: TLEUpdate[];
-}
-
 const Dashboard = () => {
   const { 
     tleData, 
@@ -45,8 +23,8 @@ const Dashboard = () => {
     toDate, 
     setToDate 
   } = useSatelliteContext();
-  const [selectedType, setSelectedType] = useState<string>('all');
-  const [maxSatellites, setMaxSatellites] = useState<number>(20);
+  const [selectedType, setSelectedType] = useState('all');
+  const [maxSatellites, setMaxSatellites] = useState(20);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -69,7 +47,7 @@ const Dashboard = () => {
       const comparisonResults = await loadAndCompareTLEData(fromDate, toDate);
       
       // Convert to TLEData format
-      const tleDataResults: TLEData[] = comparisonResults.map(result => ({
+      const tleDataResults = comparisonResults.map(result => ({
         noradId: result.noradId,
         name: result.name,
         type: result.type,
