@@ -14,7 +14,7 @@ import { ContributionGrid } from '@/components/dashboard/ContributionGrid';
 import { useSatelliteContext } from '@/contexts/SatelliteContext';
 import { useToast } from '@/hooks/use-toast';
 
-const Dashboard = () => {
+const Dashboard: React.FC = () => {
   const { 
     tleData, 
     setTleData, 
